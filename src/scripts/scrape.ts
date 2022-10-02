@@ -2,6 +2,11 @@ import prisma from "~/lib/prisma";
 import fetch from "node-fetch";
 import { Prisma, Station } from "@prisma/client";
 import { distance, point } from "@turf/turf";
+import * as https from "https";
+
+const agent = new https.Agent({
+  rejectUnauthorized: false,
+});
 
 interface APIStation {
   id: string;
@@ -42,12 +47,17 @@ export const main = async () => {
           v: "4",
         });
 
-        const url = `${baseUrl}/${station.id}?${params.toString()}`;
+        const createUrl = (u: string) => {
+          return `${u}/${station.id}?${params.toString()}`;
+        };
 
         let stations: APIStation[];
 
         try {
-          stations = await fetch(url).then((res) => res.json());
+          stations = await Promise.any([
+            fetch(createUrl(baseUrl), { agent }),
+            fetch(createUrl("https://localhost:33000"), { agent }),
+          ]).then((res) => res.json());
 
           if (!Array.isArray(stations)) {
             console.log("ERROR", station.id);
